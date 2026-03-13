@@ -15,7 +15,7 @@ class Partical():
         self.velx=0
         self.vely=0
         self.drag=0.995
-        self.speed=0.15
+        self.speed=0.05
         self.radius=radius
         self.color=color
 
@@ -28,15 +28,33 @@ class Partical():
         dx=mp[0]-self.pos[0]
         dy=mp[1]-self.pos[1]
         dist=((dx**2)+(dy**2))**0.5
-
         self.velx+=dx*self.speed/dist
         self.vely+=dy*self.speed/dist
+        
         
 
         #drag
         self.velx*=self.drag
         self.vely*=self.drag
 
+        #wall collision
+        if self.pos[0]+self.radius>500:
+            self.pos[0]=500-self.radius
+            self.velx=-abs(self.velx)
+
+        elif self.pos[0]<self.radius:
+            self.pos[0]=self.radius
+            self.velx=abs(self.velx)
+            
+
+        if self.pos[1]+self.radius>500:
+            self.pos[1]=500-self.radius
+            self.vely=-abs(self.vely)
+            
+        elif self.pos[1]<self.radius:
+            self.pos[1]=self.radius
+            self.vely=abs(self.vely)
+        
     def move(self):
         self.pos[0]+=self.velx
         self.pos[1]+=self.vely
@@ -65,13 +83,42 @@ class BoundingBox():
         self.size[0]=max(partical.pos[0] for partical in self.particals) - self.pos[0]
         self.size[1]=max(partical.pos[1] for partical in self.particals) - self.pos[1]
 
-    def split(self):
-        if len(self.particals)<50:
-            return None
+    def collideParticles(self):
+        for particalA in self.particals:
+            for particalB in self.particals:
+                if particalA==particalB:
+                    continue
+                dx=particalA.pos[0]-particalB.pos[0]
+                dy=particalA.pos[1]-particalB.pos[1]
+                dist=((dx**2)+(dy**2))**0.5
+                depth=(particalA.radius+particalB.radius)-dist
 
+                if depth>0:
+                    '''
+                    const=-0.1
+                    particalA.velx-=const*dx/dist
+                    particalB.velx+=const*dx/dist
+                    
+                    particalA.vely-=const*dy/dist
+                    particalB.vely+=const*dy/dist
+                    '''
+                    particalA.pos[0]+=(dx/dist)*(depth/2)
+                    particalA.pos[1]+=(dy/dist)*(depth/2)
+
+                    particalB.pos[0]-=(dx/dist)*(depth/2)
+                    particalB.pos[1]-=(dy/dist)*(depth/2)
+
+
+
+    def split(self):
         majorAxis=0
         if self.size[0]<self.size[1]:
             majorAxis=1
+
+        if self.size[majorAxis]<150:
+            self.collideParticles()
+            return None
+
 
         splitPos=self.pos[majorAxis]+(self.size[majorAxis]/2)
 
@@ -106,8 +153,8 @@ def Update_partical(partical):
 
 
 particals=[]
-for i in range(400):
-    particals.append(Partical(random.randrange(0,size[0]),random.randrange(0,size[1]),3))
+for i in range(80):
+    particals.append(Partical(random.randrange(0,size[0]),random.randrange(0,size[1]),5))
 
 rootBox=BoundingBox(particals)
 
