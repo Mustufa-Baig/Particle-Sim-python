@@ -8,6 +8,7 @@ pygame.display.set_caption('Particle Sim')
 clock=pygame.time.Clock()
 run=True
 
+gravityMode=False
 
 class Partical():
     def __init__(self,x,y,radius,color=((255,255,255))):
@@ -24,12 +25,15 @@ class Partical():
         
         #move to cursor
         
-        mp=pygame.mouse.get_pos()
-        dx=mp[0]-self.pos[0]
-        dy=mp[1]-self.pos[1]
-        dist=((dx**2)+(dy**2))**0.5
-        self.velx+=dx*self.speed/dist
-        self.vely+=dy*self.speed/dist
+        if gravityMode:
+            self.vely+=0.1
+        else:
+            mp=pygame.mouse.get_pos()
+            dx=mp[0]-self.pos[0]
+            dy=mp[1]-self.pos[1]
+            dist=((dx**2)+(dy**2))**0.5
+            self.velx+=dx*self.speed/dist
+            self.vely+=dy*self.speed/dist
         
         
 
@@ -38,22 +42,23 @@ class Partical():
         self.vely*=self.drag
 
         #wall collision
+        elasticity=0.95
         if self.pos[0]+self.radius>500:
             self.pos[0]=500-self.radius
-            self.velx=-abs(self.velx)
+            self.velx=-abs(self.velx)*elasticity
 
         elif self.pos[0]<self.radius:
             self.pos[0]=self.radius
-            self.velx=abs(self.velx)
+            self.velx=abs(self.velx)*elasticity
             
 
         if self.pos[1]+self.radius>500:
             self.pos[1]=500-self.radius
-            self.vely=-abs(self.vely)
+            self.vely=-abs(self.vely)*elasticity
             
         elif self.pos[1]<self.radius:
             self.pos[1]=self.radius
-            self.vely=abs(self.vely)
+            self.vely=abs(self.vely)*elasticity
         
     def move(self):
         self.pos[0]+=self.velx
@@ -69,9 +74,10 @@ class Partical():
 
 
 class BoundingBox():
-    def __init__(self,particals):
+    def __init__(self,particals,rDepth=0):
         self.pos=[0,0]
         self.size=[0,0]
+        self.rDepth=rDepth
         self.particals=particals
         self.childA=None
         self.childB=None
@@ -93,15 +99,7 @@ class BoundingBox():
                 dist=((dx**2)+(dy**2))**0.5
                 depth=(particalA.radius+particalB.radius)-dist
 
-                if depth>0:
-                    '''
-                    const=-0.1
-                    particalA.velx-=const*dx/dist
-                    particalB.velx+=const*dx/dist
-                    
-                    particalA.vely-=const*dy/dist
-                    particalB.vely+=const*dy/dist
-                    '''
+                if depth>0 and not(dist==0):
                     particalA.pos[0]+=(dx/dist)*(depth/2)
                     particalA.pos[1]+=(dy/dist)*(depth/2)
 
@@ -109,24 +107,23 @@ class BoundingBox():
                     particalB.pos[1]-=(dy/dist)*(depth/2)
 
 
-
     def split(self):
-        majorAxis=0
-        if self.size[0]<self.size[1]:
-            majorAxis=1
-
-        if self.size[majorAxis]<150:
+        if len(self.particals)<=25 or self.rDepth>20:
             self.collideParticles()
             return None
 
 
+        majorAxis=0
+        if self.size[0]<self.size[1]:
+            majorAxis=1
+
         splitPos=self.pos[majorAxis]+(self.size[majorAxis]/2)
 
-        childParticlesA=[partical for partical in self.particals if partical.pos[majorAxis]<splitPos]
-        childParticlesB=[partical for partical in self.particals if partical.pos[majorAxis]>=splitPos]
+        childParticlesA=[partical for partical in self.particals if partical.pos[majorAxis]-partical.radius<splitPos]
+        childParticlesB=[partical for partical in self.particals if partical.pos[majorAxis]+partical.radius>=splitPos]
 
-        self.childA=BoundingBox(childParticlesA)
-        self.childB=BoundingBox(childParticlesB)
+        self.childA=BoundingBox(childParticlesA,self.rDepth+1)
+        self.childB=BoundingBox(childParticlesB,self.rDepth+1)
         
         self.childA.calculate()
         self.childA.split()
@@ -140,6 +137,7 @@ class BoundingBox():
             self.childB.draw()
         else:
             pygame.draw.rect(win,((230,0,0)),((self.pos),(self.size)),2)
+            
 
 
 
@@ -153,8 +151,8 @@ def Update_partical(partical):
 
 
 particals=[]
-for i in range(80):
-    particals.append(Partical(random.randrange(0,size[0]),random.randrange(0,size[1]),5))
+for i in range(200):
+    particals.append(Partical(random.randrange(0,size[0]),random.randrange(0,size[1]),7))
 
 rootBox=BoundingBox(particals)
 
@@ -163,6 +161,8 @@ while run:
     for event in pygame.event.get():
         if event.type==pygame.QUIT:
             run=False
+        if event.type==pygame.MOUSEBUTTONUP:
+            gravityMode=not(gravityMode)
 
     for partical in particals:
         Update_partical(partical)
@@ -171,7 +171,8 @@ while run:
     rootBox.split()
     rootBox.draw()
 
+    
     pygame.display.update()
-    clock.tick(60)
+    #clock.tick(60)
 
 pygame.quit()
