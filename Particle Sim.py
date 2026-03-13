@@ -1,4 +1,4 @@
-import pygame,random
+import pygame,random,math
 pygame.init()
 
 size=500,500
@@ -10,24 +10,21 @@ run=True
 
 gravityMode=False
 
+
 class Partical():
-    def __init__(self,x,y,radius,color=((255,255,255))):
-        self.pos=[x,y]
-        self.velx=0
-        self.vely=0
-        self.drag=0.995
-        self.speed=0.05
-        self.radius=radius
+    def __init__(self,color=((255,255,255))):
+        self.pos=[random.randrange(0,size[1]),random.randrange(0,size[1])]
+        self.velx=random.randrange(-2,2)
+        self.vely=random.randrange(-2,2)
+        self.drag=0.999
+        self.speed=0.02
+        self.radius=random.randrange(4,10)
+        self.mass=self.radius/2
         self.color=color
 
     
     def physics(self):
-        
-        #move to cursor
-        
         if gravityMode:
-            self.vely+=0.1
-        else:
             mp=pygame.mouse.get_pos()
             dx=mp[0]-self.pos[0]
             dy=mp[1]-self.pos[1]
@@ -42,7 +39,7 @@ class Partical():
         self.vely*=self.drag
 
         #wall collision
-        elasticity=0.95
+        elasticity=0.98
         if self.pos[0]+self.radius>500:
             self.pos[0]=500-self.radius
             self.velx=-abs(self.velx)*elasticity
@@ -106,6 +103,53 @@ class BoundingBox():
                     particalB.pos[0]-=(dx/dist)*(depth/2)
                     particalB.pos[1]-=(dy/dist)*(depth/2)
 
+                    p1,p2=particalA.pos,particalB.pos
+                    v1=[particalA.velx,particalA.vely]
+                    v2=[particalB.velx,particalB.vely]
+                    m1,m2=particalA.mass,particalB.mass
+                    e=0.99
+
+
+                    nx = p1[0] - p2[0]
+                    ny = p1[1] - p2[1]
+
+                    dist = math.sqrt(nx*nx + ny*ny)
+                    if dist == 0:
+                        return v1, v2
+
+                    # normalize
+                    nx /= dist
+                    ny /= dist
+
+                    # relative velocity
+                    rvx = v1[0] - v2[0]
+                    rvy = v1[1] - v2[1]
+
+                    vel_along_normal = rvx*nx + rvy*ny
+
+                    # already separating
+                    if vel_along_normal > 0:
+                        return v1, v2
+
+                    # impulse scalar
+                    j = -(1 + e) * vel_along_normal
+                    j /= (1/m1 + 1/m2)
+
+                    # impulse vector
+                    ix = j * nx
+                    iy = j * ny
+
+                    # new velocities
+                    v1_new = (v1[0] + ix/m1, v1[1] + iy/m1)
+                    v2_new = (v2[0] - ix/m2, v2[1] - iy/m2)
+
+                    particalA.velx=v1_new[0]
+                    particalA.vely=v1_new[1]
+
+                    particalB.velx=v2_new[0]
+                    particalB.vely=v2_new[1]
+
+
 
     def split(self):
         if len(self.particals)<=25 or self.rDepth>20:
@@ -152,7 +196,7 @@ def Update_partical(partical):
 
 particals=[]
 for i in range(200):
-    particals.append(Partical(random.randrange(0,size[0]),random.randrange(0,size[1]),7))
+    particals.append(Partical())
 
 rootBox=BoundingBox(particals)
 
@@ -173,6 +217,6 @@ while run:
 
     
     pygame.display.update()
-    #clock.tick(60)
+    clock.tick(60)
 
 pygame.quit()
