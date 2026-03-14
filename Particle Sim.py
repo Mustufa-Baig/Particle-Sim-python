@@ -1,11 +1,12 @@
 import pygame,random,math
 pygame.init()
 
-size=500,500
+size=700,500
 win=pygame.display.set_mode((size))
 pygame.display.set_caption('Particle Sim')
 
 clock=pygame.time.Clock()
+font = pygame.font.SysFont("Arial Black", 32)
 run=True
 
 gravityMode=False
@@ -13,12 +14,12 @@ gravityMode=False
 
 class Partical():
     def __init__(self,color=((255,255,255))):
-        self.pos=[random.randrange(0,size[1]),random.randrange(0,size[1])]
+        self.pos=[random.randrange(0,size[0]),random.randrange(0,size[1])]
         self.velx=random.randrange(-2,2)
         self.vely=random.randrange(-2,2)
         self.drag=0.999
-        self.speed=0.02
-        self.radius=random.randrange(4,10)
+        self.speed=0.05
+        self.radius=random.randrange(2,6)
         self.mass=self.radius/2
         self.color=color
 
@@ -40,8 +41,8 @@ class Partical():
 
         #wall collision
         elasticity=0.98
-        if self.pos[0]+self.radius>500:
-            self.pos[0]=500-self.radius
+        if self.pos[0]+self.radius>size[0]:
+            self.pos[0]=size[0]-self.radius
             self.velx=-abs(self.velx)*elasticity
 
         elif self.pos[0]<self.radius:
@@ -49,8 +50,8 @@ class Partical():
             self.velx=abs(self.velx)*elasticity
             
 
-        if self.pos[1]+self.radius>500:
-            self.pos[1]=500-self.radius
+        if self.pos[1]+self.radius>size[1]:
+            self.pos[1]=size[1]-self.radius
             self.vely=-abs(self.vely)*elasticity
             
         elif self.pos[1]<self.radius:
@@ -180,7 +181,7 @@ class BoundingBox():
             self.childA.draw()
             self.childB.draw()
         else:
-            pygame.draw.rect(win,((230,0,0)),((self.pos),(self.size)),2)
+            pygame.draw.rect(win,((100,100,100)),((self.pos),(self.size)),2)
             
 
 
@@ -195,12 +196,14 @@ def Update_partical(partical):
 
 
 particals=[]
-for i in range(200):
+for i in range(1000):
     particals.append(Partical())
 
-rootBox=BoundingBox(particals)
 
 while run:
+    rootBox=None
+    rootBox=BoundingBox(particals)
+    
     win.fill((50,50,50))
     for event in pygame.event.get():
         if event.type==pygame.QUIT:
@@ -215,7 +218,12 @@ while run:
     rootBox.split()
     rootBox.draw()
 
-    
+
+    fps = clock.get_fps()
+    fps_text = font.render(f"{fps:.2f}", True, (255, 0, 0))
+
+    win.blit(fps_text, (10, 10))
+
     pygame.display.update()
     clock.tick(60)
 
