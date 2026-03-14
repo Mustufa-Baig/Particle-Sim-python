@@ -10,7 +10,7 @@ font = pygame.font.SysFont("Arial Black", 32)
 run=True
 
 gravityMode=False
-
+mp=pygame.mouse.get_pos()
 
 class Partical():
     def __init__(self,color=((255,255,255))):
@@ -19,19 +19,20 @@ class Partical():
         self.vely=random.randrange(-2,2)
         self.drag=0.999
         self.speed=0.05
-        self.radius=random.randrange(2,6)
+        self.radius=random.randrange(2,4)
         self.mass=self.radius/2
         self.color=color
 
     
     def physics(self):
         if gravityMode:
-            mp=pygame.mouse.get_pos()
+            
             dx=mp[0]-self.pos[0]
             dy=mp[1]-self.pos[1]
-            dist=((dx**2)+(dy**2))**0.5
-            self.velx+=dx*self.speed/dist
-            self.vely+=dy*self.speed/dist
+            dist=math.sqrt((dx*dx)+(dy*dy))
+            if dist!=0:
+                self.velx+=dx*self.speed/dist
+                self.vely+=dy*self.speed/dist
         
         
 
@@ -64,10 +65,7 @@ class Partical():
 
 
     def draw(self):
-        if self.radius==1:
-            pygame.draw.rect(win,self.color,((self.pos),(1,1)))
-        else:
-            pygame.draw.circle(win,self.color,(self.pos),self.radius)
+        pygame.draw.circle(win,self.color,(self.pos),self.radius)
 
 
 
@@ -80,80 +78,91 @@ class BoundingBox():
         self.childA=None
         self.childB=None
 
-    def calculate(self):
-        self.pos[0]=min(partical.pos[0] for partical in self.particals)
-        self.pos[1]=min(partical.pos[1] for partical in self.particals)
-
-        self.size[0]=max(partical.pos[0] for partical in self.particals) - self.pos[0]
-        self.size[1]=max(partical.pos[1] for partical in self.particals) - self.pos[1]
-
+    
     def collideParticles(self):
-        for particalA in self.particals:
-            for particalB in self.particals:
-                if particalA==particalB:
-                    continue
-                dx=particalA.pos[0]-particalB.pos[0]
-                dy=particalA.pos[1]-particalB.pos[1]
-                dist=((dx**2)+(dy**2))**0.5
-                depth=(particalA.radius+particalB.radius)-dist
+        for i in range(len(self.particals)):
+            particalA = particals[self.particals[i]]
+            for j in range(i+1, len(self.particals)):
+                particalB = particals[self.particals[j]]
 
-                if depth>0 and not(dist==0):
-                    particalA.pos[0]+=(dx/dist)*(depth/2)
-                    particalA.pos[1]+=(dy/dist)*(depth/2)
+                pA,pB=particalA.pos,particalB.pos
 
-                    particalB.pos[0]-=(dx/dist)*(depth/2)
-                    particalB.pos[1]-=(dy/dist)*(depth/2)
+                vAx,vAy=particalA.velx,particalA.vely
+                vBx,vBy=particalB.velx,particalB.vely
+                
+                rA,rB=particalA.radius,particalB.radius
+                mA,mB=particalA.mass,particalB.mass
+                
+                dx=pA[0]-pB[0]
+                dy=pA[1]-pB[1]
+                dist2=(dx*dx)+(dy*dy)
+                rad2=rA+rB
 
-                    p1,p2=particalA.pos,particalB.pos
-                    v1=[particalA.velx,particalA.vely]
-                    v2=[particalB.velx,particalB.vely]
-                    m1,m2=particalA.mass,particalB.mass
+                if dist2<(rad2*rad2):
+                    dist=math.sqrt(dist2)
+                    depth=(rA+rB)-dist
+                    if dist==0:
+                        continue
+
+                    pA[0]+=(dx/dist)*(depth/2)
+                    pA[1]+=(dy/dist)*(depth/2)
+
+                    pB[0]-=(dx/dist)*(depth/2)
+                    pB[1]-=(dy/dist)*(depth/2)
+
+
+
+
                     e=0.99
 
-
-                    nx = p1[0] - p2[0]
-                    ny = p1[1] - p2[1]
-
-                    dist = math.sqrt(nx*nx + ny*ny)
-                    if dist == 0:
-                        return v1, v2
-
                     # normalize
-                    nx /= dist
-                    ny /= dist
+                    dx /= dist
+                    dy /= dist
 
                     # relative velocity
-                    rvx = v1[0] - v2[0]
-                    rvy = v1[1] - v2[1]
+                    rvx = vAx - vBx
+                    rvy = vAy - vBy
 
-                    vel_along_normal = rvx*nx + rvy*ny
+                    vel_along_normal = rvx*dx + rvy*dy
 
                     # already separating
                     if vel_along_normal > 0:
-                        return v1, v2
+                        continue
 
                     # impulse scalar
                     j = -(1 + e) * vel_along_normal
-                    j /= (1/m1 + 1/m2)
+                    j /= (1/mA + 1/mB)
 
                     # impulse vector
-                    ix = j * nx
-                    iy = j * ny
+                    ix = j * dx
+                    iy = j * dy
 
                     # new velocities
-                    v1_new = (v1[0] + ix/m1, v1[1] + iy/m1)
-                    v2_new = (v2[0] - ix/m2, v2[1] - iy/m2)
+                    particalA.velx+= ix/mA
+                    particalA.vely+= iy/mA
 
-                    particalA.velx=v1_new[0]
-                    particalA.vely=v1_new[1]
+                    particalB.velx-= ix/mB
+                    particalB.vely-= iy/mB
 
-                    particalB.velx=v2_new[0]
-                    particalB.vely=v2_new[1]
+    def calculate(self):
+        minx=miny=float("inf")
+        maxx=maxy=float("-inf")
 
+        particles=self.particals
+        for p in particles:
+            x,y=particals[p].pos
+            if x < minx: minx = x
+            if x > maxx: maxx = x
+            if y < miny: miny = y
+            if y > maxy: maxy = y
+
+
+        self.pos=[minx,miny]
+        self.size=[maxx-minx,maxy-miny]
 
 
     def split(self):
-        if len(self.particals)<=25 or self.rDepth>20:
+        if len(self.particals)<=10 or self.rDepth>10:
             self.collideParticles()
             return None
 
@@ -164,8 +173,14 @@ class BoundingBox():
 
         splitPos=self.pos[majorAxis]+(self.size[majorAxis]/2)
 
-        childParticlesA=[partical for partical in self.particals if partical.pos[majorAxis]-partical.radius<splitPos]
-        childParticlesB=[partical for partical in self.particals if partical.pos[majorAxis]+partical.radius>=splitPos]
+        childParticlesA=[]
+        childParticlesB=[]
+
+        for p in self.particals:
+            if particals[p].pos[majorAxis]-particals[p].radius<splitPos:
+                childParticlesA.append(p)
+            elif particals[p].pos[majorAxis]+particals[p].radius>=splitPos:
+                childParticlesB.append(p)
 
         self.childA=BoundingBox(childParticlesA,self.rDepth+1)
         self.childB=BoundingBox(childParticlesB,self.rDepth+1)
@@ -187,23 +202,18 @@ class BoundingBox():
 
 
 
-def Update_partical(partical):
-    partical.physics()
-    partical.move()
-    partical.draw()
-
-
-
+particalsCount=2000
 
 particals=[]
-for i in range(1000):
+pList=list(range(particalsCount))
+for i in range(particalsCount):
     particals.append(Partical())
 
 
 while run:
-    rootBox=None
-    rootBox=BoundingBox(particals)
-    
+    rootBox=BoundingBox(pList)
+    mp=pygame.mouse.get_pos()
+
     win.fill((50,50,50))
     for event in pygame.event.get():
         if event.type==pygame.QUIT:
@@ -211,8 +221,11 @@ while run:
         if event.type==pygame.MOUSEBUTTONUP:
             gravityMode=not(gravityMode)
 
-    for partical in particals:
-        Update_partical(partical)
+    for partical in particals:        
+        partical.physics()
+        partical.move()
+        partical.draw()
+
 
     rootBox.calculate()
     rootBox.split()
