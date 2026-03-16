@@ -26,6 +26,8 @@ class Partical():
     
     def physics(self):
         if gravityMode==0:
+            self.vely+=0.3
+            
             dx=mp[0]-self.pos[0]
             dy=mp[1]-self.pos[1]
 
@@ -44,6 +46,9 @@ class Partical():
 
         #wall collision
         elasticity=0.9
+        if gravityMode==3:
+            elasticity=0.99
+
         if self.pos[0]+self.radius>size[0]:
             self.pos[0]=size[0]-self.radius
             self.velx=-abs(self.velx)*elasticity
@@ -116,6 +121,8 @@ class BoundingBox():
 
 
                     e=0.8
+                    if gravityMode==3:
+                        e=0.99
 
                     # normalize
                     dx /= dist
