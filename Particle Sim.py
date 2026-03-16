@@ -9,14 +9,14 @@ clock=pygame.time.Clock()
 font = pygame.font.SysFont("Arial Black", 32)
 run=True
 
-gravityMode=False
+gravityMode=2
 mp=pygame.mouse.get_pos()
 
 class Partical():
     def __init__(self,color=((255,255,255))):
         self.pos=[random.randrange(0,size[0]),random.randrange(0,size[1])]
-        self.velx=random.randrange(-2,2)
-        self.vely=random.randrange(-2,2)
+        self.velx=random.randrange(-4,4)
+        self.vely=random.randrange(-4,4)
         self.drag=0.999
         self.speed=0.5
         self.radius=random.randrange(7,9)
@@ -25,8 +25,7 @@ class Partical():
 
     
     def physics(self):
-        if gravityMode:
-            
+        if gravityMode==0:
             dx=mp[0]-self.pos[0]
             dy=mp[1]-self.pos[1]
 
@@ -34,7 +33,9 @@ class Partical():
             if dist!=0:
                 self.velx+=dx*self.speed/dist
                 self.vely+=dy*self.speed/dist
-        self.vely+=0.3
+        elif gravityMode==1:
+            self.vely+=0.3
+
         
 
         #drag
@@ -218,7 +219,13 @@ while run:
         if event.type==pygame.QUIT:
             run=False
         if event.type==pygame.MOUSEBUTTONUP:
-            gravityMode=not(gravityMode)
+            if event.button==3:
+                gravityMode=2
+            else:
+                if gravityMode==1:
+                    gravityMode=0
+                else:
+                    gravityMode=1
  
     for partical in particals:        
         partical.physics()
