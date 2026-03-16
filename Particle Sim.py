@@ -18,8 +18,8 @@ class Partical():
         self.velx=random.randrange(-2,2)
         self.vely=random.randrange(-2,2)
         self.drag=0.999
-        self.speed=0.05
-        self.radius=random.randrange(2,4)
+        self.speed=0.5
+        self.radius=random.randrange(7,9)
         self.mass=self.radius/2
         self.color=color
 
@@ -29,11 +29,12 @@ class Partical():
             
             dx=mp[0]-self.pos[0]
             dy=mp[1]-self.pos[1]
+
             dist=math.sqrt((dx*dx)+(dy*dy))
             if dist!=0:
                 self.velx+=dx*self.speed/dist
                 self.vely+=dy*self.speed/dist
-        
+        self.vely+=0.3
         
 
         #drag
@@ -41,7 +42,7 @@ class Partical():
         self.vely*=self.drag
 
         #wall collision
-        elasticity=0.98
+        elasticity=0.9
         if self.pos[0]+self.radius>size[0]:
             self.pos[0]=size[0]-self.radius
             self.velx=-abs(self.velx)*elasticity
@@ -65,7 +66,7 @@ class Partical():
 
 
     def draw(self):
-        pygame.draw.circle(win,self.color,(self.pos),self.radius)
+        pygame.draw.circle(win,self.color,(self.pos),self.radius-1)
 
 
 
@@ -113,7 +114,7 @@ class BoundingBox():
 
 
 
-                    e=0.99
+                    e=0.8
 
                     # normalize
                     dx /= dist
@@ -162,8 +163,9 @@ class BoundingBox():
 
 
     def split(self):
-        if len(self.particals)<=10 or self.rDepth>10:
-            self.collideParticles()
+        if len(self.particals)<=20 or self.rDepth>10:
+            for _ in range(5):
+                self.collideParticles()
             return None
 
 
@@ -179,7 +181,7 @@ class BoundingBox():
         for p in self.particals:
             if particals[p].pos[majorAxis]-particals[p].radius<splitPos:
                 childParticlesA.append(p)
-            elif particals[p].pos[majorAxis]+particals[p].radius>=splitPos:
+            if particals[p].pos[majorAxis]+particals[p].radius>=splitPos:
                 childParticlesB.append(p)
 
         self.childA=BoundingBox(childParticlesA,self.rDepth+1)
@@ -199,10 +201,7 @@ class BoundingBox():
             pygame.draw.rect(win,((100,100,100)),((self.pos),(self.size)),2)
             
 
-
-
-
-particalsCount=2000
+particalsCount=300
 
 particals=[]
 pList=list(range(particalsCount))
@@ -220,7 +219,7 @@ while run:
             run=False
         if event.type==pygame.MOUSEBUTTONUP:
             gravityMode=not(gravityMode)
-
+ 
     for partical in particals:        
         partical.physics()
         partical.move()
@@ -229,8 +228,8 @@ while run:
 
     rootBox.calculate()
     rootBox.split()
-    rootBox.draw()
-
+    #rootBox.draw()
+ 
 
     fps = clock.get_fps()
     fps_text = font.render(f"{fps:.2f}", True, (255, 0, 0))
