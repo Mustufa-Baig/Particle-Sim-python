@@ -11,6 +11,7 @@ run=True
 
 gravityMode=2
 mp=pygame.mouse.get_pos()
+BOUNDS=[]
 
 class Partical():
     def __init__(self,color=((255,255,255))):
@@ -85,74 +86,6 @@ class BoundingBox():
         self.childA=None
         self.childB=None
 
-    
-    def collideParticles(self):
-        for i in range(len(self.particals)):
-            particalA = particals[self.particals[i]]
-            for j in range(i+1, len(self.particals)):
-                particalB = particals[self.particals[j]]
-
-                pA,pB=particalA.pos,particalB.pos
-
-                vAx,vAy=particalA.velx,particalA.vely
-                vBx,vBy=particalB.velx,particalB.vely
-                
-                rA,rB=particalA.radius,particalB.radius
-                mA,mB=particalA.mass,particalB.mass
-                
-                dx=pA[0]-pB[0]
-                dy=pA[1]-pB[1]
-                dist2=(dx*dx)+(dy*dy)
-                rad2=rA+rB
-
-                if dist2<(rad2*rad2):
-                    dist=math.sqrt(dist2)
-                    depth=(rA+rB)-dist
-                    if dist==0:
-                        continue
-
-                    pA[0]+=(dx/dist)*(depth/2)
-                    pA[1]+=(dy/dist)*(depth/2)
-
-                    pB[0]-=(dx/dist)*(depth/2)
-                    pB[1]-=(dy/dist)*(depth/2)
-
-
-
-
-                    e=0.8
-                    if gravityMode==3:
-                        e=0.99
-
-                    # normalize
-                    dx /= dist
-                    dy /= dist
-
-                    # relative velocity
-                    rvx = vAx - vBx
-                    rvy = vAy - vBy
-
-                    vel_along_normal = rvx*dx + rvy*dy
-
-                    # already separating
-                    if vel_along_normal > 0:
-                        continue
-
-                    # impulse scalar
-                    j = -(1 + e) * vel_along_normal
-                    j /= (1/mA + 1/mB)
-
-                    # impulse vector
-                    ix = j * dx
-                    iy = j * dy
-
-                    # new velocities
-                    particalA.velx+= ix/mA
-                    particalA.vely+= iy/mA
-
-                    particalB.velx-= ix/mB
-                    particalB.vely-= iy/mB
-
     def calculate(self):
         minx=miny=float("inf")
         maxx=maxy=float("-inf")
@@ -171,9 +104,8 @@ class BoundingBox():
 
 
     def split(self):
-        if len(self.particals)<=20 or self.rDepth>10:
-            for _ in range(5):
-                self.collideParticles()
+        if len(self.particals)<=10 or self.rDepth>10:
+            BOUNDS.append(self.particals)
             return None
 
 
@@ -217,6 +149,77 @@ for i in range(particalsCount):
     particals.append(Partical())
 
 
+def resolveCollisions():
+    for i_p,particalA in enumerate(particals):
+        temp_list=[]
+        for bound in BOUNDS:
+            if i_p in bound:
+                temp_list+=bound
+
+        for pB in list(set(temp_list)):
+            particalB= particals[pB]
+            pA,pB=particalA.pos,particalB.pos
+
+            vAx,vAy=particalA.velx,particalA.vely
+            vBx,vBy=particalB.velx,particalB.vely
+            
+            rA,rB=particalA.radius,particalB.radius
+            mA,mB=particalA.mass,particalB.mass
+            
+            dx=pA[0]-pB[0]
+            dy=pA[1]-pB[1]
+            dist2=(dx*dx)+(dy*dy)
+            rad2=rA+rB
+
+            if dist2<(rad2*rad2):
+                dist=math.sqrt(dist2)
+                depth=(rA+rB)-dist
+                if dist==0:
+                    continue
+
+                pA[0]+=(dx/dist)*(depth/2)
+                pA[1]+=(dy/dist)*(depth/2)
+
+                pB[0]-=(dx/dist)*(depth/2)
+                pB[1]-=(dy/dist)*(depth/2)
+
+
+
+
+                e=0.8
+                if gravityMode==3:
+                    e=0.99
+
+                # normalize
+                dx /= dist
+                dy /= dist
+
+                # relative velocity
+                rvx = vAx - vBx
+                rvy = vAy - vBy
+
+                vel_along_normal = rvx*dx + rvy*dy
+
+                # already separating
+                if vel_along_normal > 0:
+                    continue
+
+                # impulse scalar
+                j = -(1 + e) * vel_along_normal
+                j /= (1/mA + 1/mB)
+
+                # impulse vector
+                ix = j * dx
+                iy = j * dy
+
+                # new velocities
+                particalA.velx+= ix/mA
+                particalA.vely+= iy/mA
+
+                particalB.velx-= ix/mB
+                particalB.vely-= iy/mB
+
+
 while run:
     rootBox=BoundingBox(pList)
     mp=pygame.mouse.get_pos()
@@ -239,10 +242,12 @@ while run:
         partical.move()
         partical.draw()
 
-
+    BOUNDS[:]=[]
     rootBox.calculate()
     rootBox.split()
-    #rootBox.draw()
+    for _ in range(2):
+        resolveCollisions()
+    rootBox.draw()
  
 
     fps = clock.get_fps()
